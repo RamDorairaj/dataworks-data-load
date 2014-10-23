@@ -1,0 +1,6 @@
+applications:
+- disk_quota: 1024M
+  path: data_load_sample.war
+  domain: mybluemix.net
+  instances: 1
+  memory: 512M

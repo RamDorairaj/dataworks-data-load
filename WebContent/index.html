@@ -1,0 +1,160 @@
+<!-- 
+	* Copyright IBM Corp. 2014
+	*
+	* Licensed under the Apache License, Version 2.0 (the "License");
+	* you may not use this file except in compliance with the License.
+	* You may obtain a copy of the License at
+	*
+	* http://www.apache.org/licenses/LICENSE-2.0
+	*
+	* Unless required by applicable law or agreed to in writing, software
+	* distributed under the License is distributed on an "AS IS" BASIS,
+	* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	* See the License for the specific language governing permissions and
+	* limitations under the License.
+ -->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+		<title>Bluemix IBM DataWorks Sample App</title>
+		<script src="https://code.jquery.com/jquery-1.6.4.min.js"></script>
+		<script src="js/script.js"></script>
+		<link rel="stylesheet" href="resources/css/document.css" type="text/css">
+		<link rel="stylesheet" href="resources/css/bluemixapp.css" type="text/css">
+		<link rel="stylesheet" href="resources/css/refinery.css" type="text/css">
+		<link rel="icon"       href="resources/images/DATAWORKS_24.png" type="image/png" >
+		<script>
+			// force https
+			if (window.location.protocol != "https:") {
+            	window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+        	}
+		</script>
+	</head>
+		
+	<body>
+		<div class="headerContainer">
+			<img class="headerLogo" alt="infosphere logo" src="resources/images/logo.png">
+			<a class="headerLink" href="#loadData">Data Load</a>
+		</div>
+		
+		<div class="contentContainer">
+			<h1>Source</h1>
+			<div id="inputContainer" class="valueContainer processed">
+				<form id="srcConnectionForm">
+				   <label for="sourceSystemSelect">Source Connection:</label>
+				   <select name="sourceSystemSelect" id="sourceSystemSelect" autofocus>
+					  <option value="s3Value" selected>SQL Database</option>
+					  <option value="s3Value">dashDB</option> 
+				   </select><br>
+				   
+				   <label for="srcHostInput">Host:</label>
+				   <input type="text" name="srcHostInput" id="srcHostInput" value="" /><br>
+
+				   <label for="srcPortInput">Port:</label>
+				   <input type="text" name="srcPortInput" id="srcPortInput" value="" /><br>
+
+				   <label for="srcDatabaseInput">Database:</label>
+				   <input type="text" name="srcDatabaseInput" id="srcDatabaseInput" value="" /><br>
+				   
+				   <label for="srcSchemaInput">Schema:</label>
+				   <input type="text" name="srcSchemaInput" id="srcSchemaInput" value="" /><br>
+				   
+				   <label for="srcUsernameInput">User name:</label>
+				   <input type="text" name="srcUsernameInput" id="srcUsernameInput" value="" /><br>
+				   
+				   <label for="srcPasswordInput">Password:</label>
+				   <input type="password" name="srcPasswordInput" id="srcPasswordInput" value=""/><br>
+				   
+				   <label for="srcTableInput">Table:</label>
+				   <input type="text" name="srcTableInput" id="srcTableInput" value="" /><br>
+				</form>
+			</div>
+			
+		</div>
+		
+		<div class="contentContainer">
+			<h1>Target</h1>
+
+			<div id="inputContainer" class="valueContainer processed">
+				<form id="trgConnectionForm">
+					<label for="targetSystemSelect">Target Connection:</label> 
+					<select	name="targetSystemSelect" id="targetSystemSelect">
+						<option value="s3Value" selected>SQL Database</option>
+						<option value="s3Value">dashDB</option> 						
+					</select><br> 
+					<label for="targetHostInput">Host:</label> 
+					<input type="text"	name="targetHostInput" id="targetHostInput" value=""><br> 
+					
+					<label for="targetPortInput">Port:</label> 
+					<input type="text" name="targetPortInput" id="targetPortInput" value=""><br>
+					 
+					<label for="targetDatabaseInput">Database:</label> 
+					<input type="text" name="targetDatabaseInput" id="targetDatabaseInput" value=""><br>
+
+					<label for="targetSchemaInput">Schema:</label> 
+					<input type="text" name="targetSchemaInput" id="targetSchemaInput" value=""><br> 
+					
+					<label for="targetUsernameInput">User name:</label> 
+					<input type="text"	name="targetUsernameInput" id="targetUsernameInput" value=""><br>
+
+					<label for="targetPasswordInput">Password:</label> 
+					<input type="password" name="targetPasswordInput" id="targetPasswordInput" value=""><br>
+
+					<label for="targetTableInput">Table:</label> 
+					<input type="text" name="targetTableInput" id="targetTableInput" value=""><br>
+
+					
+				</form>
+			</div>
+		</div>
+	<br>
+	
+		<div class="contentContainer" style="float: left;">
+	
+			<div  id="buttonContainer" class="buttonContainer processed" >
+				<input type="button" name="submit" id="createBtn" class="submitBtn" 
+					value="Load Data" onclick="createAndRunActivity();" />			
+					
+				<input type="button" name="submit" id="logBtn" class="submitBtn"
+					value="View Log" onclick="viewLog();" disabled/>		
+					
+				<input type="button" name="submit" id="resetBtn" class="submitBtn"
+                    value="Reset" onclick="reset();" /> 			
+			</div>		
+		
+			<div id="successContainer" class="resultMessageContainer" style="display: none;">
+				<table class="resultMessageTable" id="successTable" cellspacing="0">
+					<tbody>
+						<tr>
+							<td class="firstcol"><img style="display:block" src="resources/images/success.png" /></td>
+							<td><font id="successMsg">Data successfully loaded.</font></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			
+			<div id="failureContainer" class="resultMessageContainer" style="display: none;">
+				<table id="failureTable" class="resultMessageTable failureTable" cellspacing="0">
+					<tbody>
+						<tr>
+							<td class="firstcol"><img style="display:block" src="resources/images/fail.png" /></td>
+							<td><font id="errorMsg">Error during data loading.</font></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<br>
+		
+		<div id="resultContainer" class="resultContainer" style="display: none;">
+			<textarea rows="6" cols="95" id="resultText" readonly></textarea>
+		</div>
+		
+		<div id="outputContainer" class="valueContainer outputContainer">
+			<img id="loadingImg" style="display: none;" src="resources/images/loading.gif" >
+		</div>
+	</body>
+</html>
