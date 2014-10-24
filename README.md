@@ -60,22 +60,22 @@ Procedure:
 
 2. Change to the data-load directory.
 
-4. If you have modified the sample application code, rebuild it:
+3. If you have modified the sample application code, rebuild it:
 
         ant -f build.xml
         
     This step creates the data_load_sample.war file, which you can use to deploy to BlueMix.
     If you haven't changed any code, you can skip this step.
 
-5. Connect to Bluemix:
+4. Connect to Bluemix:
 
         cf api https://api.ng.bluemix.net
 
-6. Log into Bluemix:
+5. Log into Bluemix:
 
         cf login -u <YourUserName>
 
-7. Deploy your application:
+6. Deploy your application:
 
         cf push <YourAppName>
         
@@ -90,31 +90,31 @@ Procedure:
 See [the JazzHub documentation](https://hub.jazz.net/docs/build_deploy/) for full information,
 but the steps are as follows:
 
-0. [Open this project](https://hub.jazz.net/project/dataworks/data-load) in a new browser window.
+1. [Open this project](https://hub.jazz.net/project/dataworks/data-load) in a new browser window.
 
-1. Click **EDIT CODE** and log in to JazzHub if you are not already authenticated.
+2. Click **EDIT CODE** and log in to JazzHub if you are not already authenticated.
 
-2. Click **Fork**.
+3. Click **Fork**.
 
-3. Provide a name for your copy of the sample and click **Save**.
+4. Provide a name for your copy of the sample and click **Save**.
 
-4. When the project is copied into your repository, click **BUILD & DEPLOY**.
+5. When the project is copied into your repository, click **BUILD & DEPLOY**.
 
-5. Click **Project Settings**.
+6. Click **Project Settings**.
 
-6. Select **Deploy to Bluemix**, keep the other defaults, and click **Save**.
+7. Select **Deploy to Bluemix**, keep the other defaults, and click **Save**.
 
-7. On BUILD & DEPLOY, click **ADVANCED** and click **add a builder**.
+8. On BUILD & DEPLOY, click **ADVANCED** and click **add a builder**.
 
-8. Leave the defaults in the Add Builder page and click **SAVE**.
+9. Leave the defaults in the Add Builder page and click **SAVE**.
 
-9. Click **REQUEST BUILD**.
+10. Click **REQUEST BUILD**.
 
-10. When the build has completed and you see a green check mark, click **add a stage**.
+11. When the build has completed and you see a green check mark, click **add a stage**.
 
-11. Provide a unique **Application name** and click **SAVE**.
+12. Provide a unique **Application name** and click **SAVE**.
 
-12. In the pipeline, drag the Last Build icon to the deployment space to deploy the application to Bluemix.
+13. In the pipeline, drag the Last Build icon to the deployment space to deploy the application to Bluemix.
 
 
 ## Binding an IBM DataWorks service to the sample application
