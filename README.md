@@ -7,7 +7,7 @@ In the user interface for the application, users can enter source and target con
 credential information and click **Load Data** to start the data loading process.
 When the process completes, the results are shown. If the data loading process fails,
 an error description is provided. Users can click **View Log** to access the log file. 
-Click **View Payload** for instructions about how to view the payloads and to view links to API documentation.
+Click **View Payload** for instructions about how to view the payloads and to view links to API documentation.
 
 For more information about IBM DataWorks for Bluemix and the IBM DataWorks Data Load REST API, see
 [Getting Started with IBM DataWorks](https://www.ng.bluemix.net/docs/#services/dataworks1/index.html#dataworks).
