@@ -119,13 +119,31 @@ The number of times that the application has been built is displayed in the butt
 
 ## Binding an IBM DataWorks service to the sample application
 
-1. Go to Bluemix at https://bluemix.net and log in.
+If this is the first sample application you are deploying, add the IBM DataWorks service.
+If you already created a Bluemix application that uses the IBM DataWorks service, bind an
+existing service instance to that application instead of adding a new service.
+This process might help prevent your Bluemix usage from reaching allocated limits.
 
-2. Click Catalog.
+* If this is the first time you are deploying an IBM DataWorks application:
 
-3. Browse through the available services. Under Data Management, click DataWorks.
+    1. Go to Bluemix at https://bluemix.net and log in.
 
-4. Select your sample application in the "Add service" section and click **Create**.
+    2. Click **Catalog**.
+
+    3. Browse through the available services. Under Data Management, click DataWorks.
+
+    4. Select your sample application in the Add service section and click **Create**.
+
+* If you previously deployed another IBM DataWorks application:
+
+    1. Go to Bluemix at https://bluemix.net and log in.
+
+    2. From the Bluemix dashboard, double-click your new application.
+
+    3. Click **BIND A SERVICE**.
+
+    4. Select an existing instance of the IBM DataWorks service to bind to the application.
+
 
 
 ## Viewing the sample application
