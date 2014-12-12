@@ -20,9 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
-
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -52,6 +49,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
 
 import javax.net.ssl.SSLContext;
+
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
 
@@ -61,14 +59,14 @@ import com.ibm.json.java.JSONObject;
 /**
  * This class implements a REST resource for the IBM DataWorks service.
  * 
- * It consists of one function:
- * 1. runActivity: Runs an IBM DataWorks activity.
+ * It consists of several functions:
+ * 1. saveActivity: Creates an IBM DataWorks activity.
  *                 
  *    HTTP request:                     
- *    POST to URL .../refinery
+ *    POST to URL .../dataworks/dc/v1/activities
  *    Request JSON example: 
  *       { 
- *         "activityPatternId": "com.ibm.refinery.dc.DPActivityPattern",
+ *         "activityPatternId": "DataLoad",
  *         "name": "MyActivity",
  *         "inputDocument": {
  *         ...
@@ -78,7 +76,7 @@ import com.ibm.json.java.JSONObject;
  *    Response JSON example:
  *       {
  *         "activityId": "8d3905eb.529170ae.0824huvs9.9g0gah5.pr7iln.4adcqi3mp48usq5d49s4o",
- *         "activityURL": "https://xxx:9443/ibm/refinery/dc/v1/activities/8d3905eb.529170ae.0824huvs9.9g0gah5.pr7iln.4adcqi3mp48usq5d49s4o",
+ *         "activityURL": "https://xxx:9443/ibm/dataworks/dc/v1/activities/8d3905eb.529170ae.0824huvs9.9g0gah5.pr7iln.4adcqi3mp48usq5d49s4o",
  *         "inputDocument" {
  *         ...
  *         },
@@ -86,10 +84,15 @@ import com.ibm.json.java.JSONObject;
  *         ...
  *         },
  *         "id": "8d3905eb.3d01858f.0824i2hqg.fcm9n4r.6m1upb.3igiaerh14nask40toouo",
- *         "URL": "https://vmlnxbt01:9443/ibm/refinery/dc/v1/activities/8d3905eb.529170ae.0824huvs9.9g0gah5.pr7iln.4adcqi3mp48usq5d49s4o/activityRuns/8d3905eb.3d01858f.0824i2hqg.fcm9n4r.6m1upb.3igiaerh14nask40toouo",
+ *         "URL": "https://vmlnxbt01:9443/ibm/dataworks/dc/v1/activities/8d3905eb.529170ae.0824huvs9.9g0gah5.pr7iln.4adcqi3mp48usq5d49s4o/activityRuns/8d3905eb.3d01858f.0824i2hqg.fcm9n4r.6m1upb.3igiaerh14nask40toouo",
  *         "createdUser": "user",
  *         "createdTimeStamp": "2014-10-13T15:57:27+00:00"
  *       }
+ *       
+ * 2. runActivity: runs the activity created
+ * 3. getRun: gets the status of an activity run
+ * 4. getRunLogs: gets the extended logs for an activity run
+ *      
  */
 @Path("/activities")
 public class DataLoadResource {
@@ -101,9 +104,7 @@ public class DataLoadResource {
 	 */
 	public DataLoadResource() 
 	{
-        ResourceBundle bundle = PropertyResourceBundle.getBundle("com.ibm.dataworks.configuration");
-        String serviceName = bundle.getString("dataworks.service.name");
-        vcapInfo = new VcapServicesInfo(serviceName);
+        vcapInfo = new VcapServicesInfo("DataWorks");
 	}
 
 	/**
@@ -123,11 +124,12 @@ public class DataLoadResource {
 			// Step 1: Post the activity definition .../activities
 			//
 		    HttpClient client = getAuthenticatedHttpClient();
-			String activitiesUrl = vcapInfo.getUrl() + "/activities";
+			String activitiesUrl = vcapInfo.getDataLoadUrl() + "/activities";
 			HttpPost postRequest = new HttpPost(activitiesUrl);
 			StringEntity input = new StringEntity(inputObj.serialize());
 			input.setContentType(MediaType.APPLICATION_JSON);
 			postRequest.setEntity(input);
+			postRequest.setHeader("Accept", MediaType.APPLICATION_JSON);
 			//
 			// Step 2: Get the response.
 			//
@@ -136,28 +138,52 @@ public class DataLoadResource {
 			// Check the status code and return an internal server error if it is not 200
 			if (status != 200) {
 				JSONObject errorObject = createErrorObject("SavingActivityFailed",response);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
+				return Response.status(status).entity(errorObject).build();
 			}
+			
 			//
-			// Step 3: Get the URL for the activity runs resource from the output JSON
+			// Step 3: return the result.
 			//
-			JSONObject resultObj = JSONObject.parse(response.getEntity().getContent());
-            String runsUrl = (String) resultObj.get("runsURL");
+			JSONObject activityResponse = JSONObject.parse(response.getEntity().getContent());
+			return Response.status(status).entity(activityResponse).build();
+		} catch (Exception exc) {
+			JSONObject errorObject = createErrorObject(exc);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
+		}
+	}
+	
+	@POST
+	@Path("{activityId}/activityRuns")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response runActivity(@Context                  HttpHeaders    headers, 
+								@Context                  UriInfo        info,
+								@PathParam("activityId")  String    	 activityId) {
+		try {
 			//
-            // Step 4: Run the activity by sending a POST request to the URL returned by the activity creation
+			// Step 1: Post the activity run .../activities/{activityId}/activityRuns
 			//
-			HttpPost runPostRequest = new HttpPost(runsUrl);
-			response = client.execute(runPostRequest);
-			status = response.getStatusLine().getStatusCode();
+		    HttpClient client = getAuthenticatedHttpClient();
+			String activityRunUrl = vcapInfo.getDataLoadUrl() + "/activities/" + 
+					activityId + "/activityRuns";
+			HttpPost postRequest = new HttpPost(activityRunUrl);
+			postRequest.setHeader("Accept", MediaType.APPLICATION_JSON);
+			postRequest.setHeader("Content-Type", MediaType.APPLICATION_JSON);
+			
+			//
+			// Step 2: Get the response.
+			//
+			HttpResponse response = client.execute(postRequest);
+			int status = response.getStatusLine().getStatusCode();
+			// Check the status code and return an internal server error if it is not 200
 			if (status != 200) {
-				JSONObject errorObject = createErrorObject("RunActivityFailed", response);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
+				JSONObject errorObject = createErrorObject("RunningActivityFailed",response);
+				return Response.status(status).entity(errorObject).build();
 			}
 			//
-			// Step 5: return the result.
+			// Step 3: return the result.
 			//
 			JSONObject runResponse = JSONObject.parse(response.getEntity().getContent());
-			return Response.status(Status.ACCEPTED).entity(runResponse).build();
+			return Response.status(status).entity(runResponse).build();
 		} catch (Exception exc) {
 			JSONObject errorObject = createErrorObject(exc);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
@@ -173,10 +199,10 @@ public class DataLoadResource {
 							@PathParam("runId")       String    	 runId) {
 		try {
 			//
-		    // Step 1: Post the activity definition .../activities
+		    // Step 1: Get the activity status .../activities/{activityID}/activityRuns/{runID}
 			//
 		    HttpClient client = getAuthenticatedHttpClient();
-			String activityRunUrl = vcapInfo.getUrl() + "/activities/" + activityId + 
+			String activityRunUrl = vcapInfo.getDataLoadUrl() + "/activities/" + activityId + 
 					"/activityRuns/" + runId;
 			HttpGet getRequest = new HttpGet(activityRunUrl);
 			getRequest.setHeader("Accept", "application/json");
@@ -190,11 +216,11 @@ public class DataLoadResource {
 			// Check the status code and return an internal server error if it is not 200
 			if (status != 200) {
 				JSONObject errorObject = createErrorObject("Getting Run Status",response);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
+				return Response.status(status).entity(errorObject).build();
 			}
 
 			JSONObject getResponse = JSONObject.parse(response.getEntity().getContent());
-			return Response.status(Status.ACCEPTED).entity(getResponse).build();
+			return Response.status(status).entity(getResponse).build();
 			
 		} catch (Exception exc) {
 			JSONObject errorObject = createErrorObject(exc);
@@ -207,15 +233,16 @@ public class DataLoadResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getRunLogs(	@Context                  HttpHeaders    headers, 
 								@Context                  UriInfo        info,
-								@PathParam("activityId")  String    	activityId,
-								@PathParam("runId")  String    	runId) {
+								@PathParam("activityId")  String    	 activityId,
+								@PathParam("runId")  	  String    	 runId) {
 		try {
 			//
-		    // Step 1: Post the activity definition .../activities
+		    // Step 1: Get the activity run logs .../activities/{activityID}/activityRuns/{runID}
 			//
 		    HttpClient client = getAuthenticatedHttpClient();
-			String activityRunLogsUrl = vcapInfo.getUrl() + "/activities/" + activityId + 
-					"/activityRuns/" + runId + "/logs";
+		    // '?all=true' requests all the extended logs, if available
+			String activityRunLogsUrl = vcapInfo.getDataLoadUrl() + "/activities/" + activityId + 
+					"/activityRuns/" + runId + "/logs?all=true";
 			HttpGet getRequest = new HttpGet(activityRunLogsUrl);
 			getRequest.setHeader("Accept", "application/json");
 			getRequest.setHeader("Content-Type", "application/json");
@@ -228,11 +255,11 @@ public class DataLoadResource {
 			// Check the status code and return an internal server error if it is not 200
 			if (status != 200) {
 				JSONObject errorObject = createErrorObject("Getting Run Logs Failed",response);
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorObject).build();
+				return Response.status(status).entity(errorObject).build();
 			}
 
 			JSONArray getResponse = JSONArray.parse(response.getEntity().getContent());
-			return Response.status(Status.ACCEPTED).entity(getResponse).build();
+			return Response.status(status).entity(getResponse).build();
 			
 		} catch (Exception exc) {
 			JSONObject errorObject = createErrorObject(exc);
@@ -272,7 +299,7 @@ public class DataLoadResource {
 		return createErrorObject(msgId, msgSeverity,msgText,
 				msgExplanation, msgResponse);
 	}
-
+	
 	/**
 	 * Create an error JSON object from an exception.
 	 */
@@ -314,7 +341,7 @@ public class DataLoadResource {
 		UsernamePasswordCredentials creds = new UsernamePasswordCredentials(vcapInfo.getUser(), vcapInfo.getPassword());
 		CredentialsProvider credsProvider = new BasicCredentialsProvider();
 		credsProvider.setCredentials(new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT), creds);
-		// always accept the certificate 
+		// For demo purposes only: always accept the certificate 
 		TrustStrategy accepAllTrustStrategy = new TrustStrategy() {
 			@Override
 			public boolean isTrusted(X509Certificate[] certificate, String authType) {

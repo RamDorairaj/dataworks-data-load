@@ -57,11 +57,21 @@ public class VcapServicesInfo
     }
     
     /**
+     * Gets the Data Works base binding URL.
      * @return the URL.
      */
-    public String getUrl()
+    public String getDataWorksUrl()
     {
         return url;
+    }
+    
+    /**
+     * Gets the Data Works Data Load URL
+     * @return
+     */
+    public String getDataLoadUrl()
+    {
+        return getDataWorksUrl() + "/dc/v1";
     }
     
     /**

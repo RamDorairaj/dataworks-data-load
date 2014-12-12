@@ -20,132 +20,386 @@ var currentRunId;
 var pollingTimer;
 
 /**
- * Create and run the activity.  
- * 
- * Takes the user inputs and invokes the servlet with an activity request payload.
- * The servlet will then create an activity by calling POST /activities on the 
- * IBM DataWorks api, and the servlet will then immediately run the activity
- * by calling /activities/<activityId>/activityRuns. The servlet will then respond
- * back to the client with the ActivityRun paylod response.
+ * createAndRunActivity:
+ * This code takes the user input and prepares the payload for the activity request. 
+ * Then, the servlet creates an activity by calling the POST /activities method on the IBM DataWorks API. 
+ * Immediately after the activity is created, the servlet runs the activity by calling the 
+ * POST /activities/<activityId>/activityRuns method. 
+ * The servlet responds to the client with the payload response.
  */
 function createAndRunActivity() {
+	
+	// disable the Load Data and the View Log buttons
 	$('#createBtn').prop('disabled', true);
 	$('#logBtn').prop('disabled', true);
-	
-	// retrieve parameters from html input fields
-	var srcHost     = $("#srcHostInput").val();
-	var srcPort     = $("#srcPortInput").val();
-	var srcDatabase = $("#srcDatabaseInput").val();
-	var srcSchema   = $("#srcSchemaInput").val();
-	var srcUsername = $("#srcUsernameInput").val();
-	var srcPassword = $("#srcPasswordInput").val();
-	var srcTable    = $("#srcTableInput").val();
-	
-	var targetHost     = $("#targetHostInput").val();
-	var targetPort     = $("#targetPortInput").val();
-	var targetDatabase = $("#targetDatabaseInput").val();
-	var targetSchema   = $("#targetSchemaInput").val();
-	var targetUsername = $("#targetUsernameInput").val();
-	var targetPassword = $("#targetPasswordInput").val();
-	var targetTable    = $("#targetTableInput").val();
-	
+
 	// hide success and failure messages and empty result table
 	$("#successContainer").hide();
 	$("#failureContainer").hide();
 	$("#resultContainer").hide();
 	$('#resultText').val('');
 	
-	// display progress indicator
+	// display the progress indicator
 	$("#loadingImg").show();
-
+	
+	// Hold UI parameters used by sources and targets
+	var srcTable;	
+	var targetTable;	
 	var uniqueId = new Date().getTime();
+	var sourceConnection;
+	var srcConnType = $("#sourceSystemSelect").val();
+	var targetConnection;
+	var trgConnType = $("#targetSystemSelect").val();
+	var srcOptions;
+	var trgOptions;
+	var srcTableDefinition;
+		
+
+	// ============  SOURCE =====================
+	// Set up the request when the source is an on-premises Oracle database.
+	if (srcConnType == "ORACLEODBC") {
+		var srcHost     = $("#srcORACHostInput").val();
+		var srcPort     = $("#srcORACPortInput").val();
+		var srcSchema   = $("#srcORACSchemaInput").val();
+		var srcUsername = $("#srcORACUsernameInput").val();
+		var srcPassword = $("#srcORACPasswordInput").val();
+		var srcSid		= $("#srcORACSIDInput").val();
+		var srcSSLCert	= $("#srcORACSSLCert").val();		
+		srcTable    	= $("#srcORACTableInput").val();	
+		var isSSL = false;
+		
+		if(srcSSLCert && srcSSLCert.trim())
+			isSSL = true;
+		
+		sourceConnection =  {
+	            type : "oracle",
+				sid : srcSid,
+	            user : srcUsername,
+	            password : srcPassword,
+	            schema : srcSchema,
+	            host : srcHost,
+	            port : parseInt(srcPort),
+	            ssl : isSSL,
+	            sslCert : srcSSLCert
+	        };
+		
+        srcOptions = {
+            maxRecordPerTable : 1000000,
+            maxTableToExtract : "all"
+        };
+		
+	// setup the request for an HADOOP source		
+	} else if (srcConnType == "HADOOP") {
+		
+		var srcHadoopFolderPath = $("#srcHadoopFolderPathInput").val();
+		var srcHadoopHost     = $("#srcHadoopHostInput").val();
+		var srcHadoopPort     = $("#srcHadoopPortInput").val();
+		var srcHadoopUsername = $("#srcHadoopUsernameInput").val();
+		var srcHadoopPassword = $("#srcHadoopPasswordInput").val();
+		srcTable    		  = $("#srcHadoopTableInput").val();
+		
+		sourceConnection = {
+                type : "hadoop",
+                httpFs : {
+                    host : srcHadoopHost,
+                    port : parseInt(srcHadoopPort),
+                    user : srcHadoopUsername,
+                    password : srcHadoopPassword,
+                    folderPath : srcHadoopFolderPath
+                	}
+                };
+		
+		srcOptions = {
+		            structureInFirstRow : false,
+			        fileStructure : "csv",
+			        encoding : "UTF-8",
+			        maxRecordPerFile : "all"
+				};
+		
+	// setup the request for the SoftLayer Object Storage (Swift) source		
+	} else if (srcConnType == "OBJECTSTORAGE") {
+		
+		var srcObjURLInput 		 = $("#srcObjURLInput").val();
+		var srcObjContainerInput = $("#srcObjContainerInput").val();
+		var srcObjAccessKeyInput = $("#srcObjAccessKeyInput").val();
+		var srcObjSecretKeyInput = $("#srcObjSecretKeyInput").val();
+		srcTable    			 = $("#srcObjTableInput").val();
+		
+		sourceConnection = {
+				type :"softlayerobjectstorage",
+                loginUrl : srcObjURLInput,
+                container : srcObjContainerInput,
+                accessKey : srcObjAccessKeyInput,
+                secretKey : srcObjSecretKeyInput
+                };
+		
+		srcOptions = {
+		            structureInFirstRow : false,
+			        fileStructure : "csv",
+			        encoding : "UTF-8",
+			        maxRecordPerFile : "all"
+				};		
+
+	// setup the request for the Amazon S3 source (csv)		
+	} else if (srcConnType == "AMAZONS3") {
+		
+		var srcS3RegionInput 	= $("#srcS3RegionInput").val();
+		var srcS3BucketInput 	= $("#srcS3BucketInput").val();	
+		var srcS3AccessKeyInput = $("#srcS3AccessKeyInput").val();
+		var srcS3SecretKeyInput = $("#srcS3SecretKeyInput").val();
+		srcTable    			= $("#srcS3TableInput").val();		
+	
+		sourceConnection = {
+                type :"amazons3",
+                region : srcS3RegionInput,
+                bucket : srcS3BucketInput,
+                accessKey : srcS3AccessKeyInput,
+                secretKey : srcS3SecretKeyInput
+                };
+		
+		srcOptions = {
+		            structureInFirstRow : false,
+			        fileStructure : "csv",
+			        encoding : "UTF-8",
+			        maxRecordPerFile : "all"
+				};	
+
+	// setup the request for a DashDB or SQLDB source
+	} else {	
+		
+		var srcHost     = $("#srcHostInput").val();
+		var srcPort     = $("#srcPortInput").val();
+		var srcDatabase = $("#srcDatabaseInput").val();
+		var srcSchema   = $("#srcSchemaInput").val();
+		var srcUsername = $("#srcUsernameInput").val();
+		var srcPassword = $("#srcPasswordInput").val();
+		srcTable    	= $("#srcTableInput").val();	
+		var srcType     = "dashdb";
+		
+		if (srcConnType == "SQLDB") {
+			srcType     = "sqldb";
+		}
+		
+		sourceConnection =  {
+           	database : srcDatabase,
+           	user : srcUsername,
+           	password : srcPassword,
+           	schema : srcSchema,
+           	host: srcHost,
+           	port: parseInt(srcPort),
+           	type : srcType
+        };
+		
+        srcOptions = {
+                maxRecordPerTable : 1000000,
+                maxTableToExtract : "all"
+            };
+	}
+	
+	// When source is HADOOP, AMAZONS3 or OBJECTSTORAGE, the csv file columns need to be defined in the JSON.
+	// this sample code only supports a CSV file that contains 2 columns:  integer, varchar. 
+	// Input csv file has to be in format:
+	// 		10,"a"
+	// 		20,"bb"
+	//  	30,"cccc"
+	if (srcConnType == "HADOOP" || srcConnType == "AMAZONS3" || srcConnType == "OBJECTSTORAGE") {
+		 srcTableDefinition= { 
+			        		columns : [
+					          		  {  name: "ID",
+					          		     type :	{
+					          		           	length: 10,
+					          		           	type: "integer"
+					          			    	}
+					          		  },
+					          		  {  name: "NAME",
+					          		     type: 	{
+					          		           	length: 20,
+					          		           	type: "varchar"
+					          		     		}
+					          		  }
+					          		  ],
+			                id: "s1",
+			                name: srcTable
+						};	
+	} else {
+		// other sources do not need the table-columns definition
+		srcTableDefinition = 	{
+									id : "s1",
+									name : srcTable
+								};		
+	}
+	
+	
+	// ============  TARGET =====================
+	// setup the request when the target is Analytics for Hadoop
+	if (trgConnType == "HADOOP") {
+		
+		var targetHadoopFolderPath = $("#targetHadoopFolderPathInput").val();
+		var targetHadoopHost     = $("#targetHadoopHostInput").val();
+		var targetHadoopPort     = $("#targetHadoopPortInput").val();
+		var targetHadoopUsername = $("#targetHadoopUsernameInput").val();
+		var targetHadoopPassword = $("#targetHadoopPasswordInput").val();
+		targetTable    			 = $("#targetHadoopTableInput").val();
+		
+		targetConnection = {
+            type : "hadoop",
+            httpFs : {
+                    host : targetHadoopHost,
+                    port : parseInt(targetHadoopPort),
+                    user : targetHadoopUsername,
+                    password : targetHadoopPassword,
+                    folderPath : targetHadoopFolderPath
+                }
+        };
+		
+		trgOptions = {
+            encoding : "UTF-8"
+        };
+		
+
+	// setup the request for targets DashDB or SQLDB
+	} else {
+		var targetHost     	= $("#targetHostInput").val();
+		var targetPort     	= $("#targetPortInput").val();
+		var targetDatabase 	= $("#targetDatabaseInput").val();
+		var targetSchema   	= $("#targetSchemaInput").val();
+		var targetUsername 	= $("#targetUsernameInput").val();
+		var targetPassword 	= $("#targetPasswordInput").val();
+		targetTable			= $("#targetTableInput").val();
+		var targetType      = "dashdb";
+		
+		if (trgConnType == "SQLDB") {
+			targetType = "sqldb";
+		}
+		
+		
+		targetConnection = 	{
+	            database : targetDatabase,
+	            user : targetUsername,
+	            password : targetPassword,
+	            schema : targetSchema,
+	            host : targetHost,
+	            port: parseInt(targetPort),
+	            type : targetType
+	        };
+		
+		trgOptions = {
+				existingTablesAction : "append"		        	
+        	};
+	}
+	
+
+	
+	// REQUEST BODY
 	// define request body
 	body = {
-		    "activityPatternId" : "com.ibm.refinery.dc.DPActivityPattern",
-		    "name": "SDL_" + uniqueId,
-		    "inputDocument" : {
-		        "name": "SDL_" + uniqueId,
-		        "sourceOptions" : {
-		            "maxRecordPerTable" : 1000000,
-		            "maxTableToExtract" : "all"
-		        },
-		        "targetOptions" : {
-		            "appendToExistingTables" : true,
-		            "replaceExistingTables" : false
-		        },
-		        "target" : {
-		            "connection" : {
-		                "database" : targetDatabase,
-		                "userName" : targetUsername,
-		                "password" : targetPassword,
-		                "schema" : targetSchema,
-		                "hostName": targetHost,
-		                "port": parseInt(targetPort),
-		                "type" : "db2"
-		            },
-		            
-		            "tables" : [{
-		                    "name" : targetTable,
-		                    "tableAlreadyExists" : false,
-		                    "sourceIds" : ["s1"]
-		                }
-		            ]
-		        },
-		        "sources" : [{
-		                "connection" : {
-		                	"database" : srcDatabase,
-			                "userName" : srcUsername,
-			                "password" : srcPassword,
-			                "schema" : srcSchema,
-			                "hostName": srcHost,
-			                "port": parseInt(srcPort),
-			                "type" : "db2"
-		                },
-		                
-		                "tables" : [{
-		                        "id" : "s1",
-		                        "name" : srcTable
-		                    }
-		                ]
-		            }
-		        ]
-		    },
-		    "shortDescription" : "A sample activity"
-		};
+	    activityPatternId : "DataLoad",
+	    name : "SDL_" + uniqueId,
+	    inputDocument : {
+	        name : "SDL_" + uniqueId,
+	        sourceOptions : srcOptions,
+	        targetOptions : trgOptions,
+	        
+	        target : {
+	            connection : targetConnection,
+
+	            tables : [{
+	                    name : targetTable,
+	                    sourceIds : ["s1"]
+	                }
+	            ]
+	        },
+	        sources : 	[{
+		                  connection : sourceConnection,
+
+		                  tables : [ 
+		                             srcTableDefinition	
+		                           ]
+	            		}]
+	    	},
+	    shortDescription : "A sample activity"
+	};
 	
-	// start data loading process
-	$.ajax({
-		"url" : "refinery/activities", 
-		"type" : "POST",
-		"data" : JSON.stringify(body),
-		"headers" : {
+	//create the activity and then run it
+	createActivity(body).then(function(activity){
+		runActivity(activity);
+	});
+};
+
+/**
+ * createActivity: 
+ * Create the activity.  
+ * The servlet creates an activity by calling the POST /activities method on the IBM DataWorks API. 
+ * Returns the response from the POST call or displays the error message, if an error occurred.
+ * @param {string} activityId
+ */
+function createActivity(activity) {
+	return $.ajax({
+		url : "refinery/activities", 
+		type : "POST",
+		data : JSON.stringify(body),
+		headers : {
 			'Content-Type' : 'application/json'
 		},
-		"dataType" : "json",
-		"success" : function(data) {
-			//track the current activity and run info
-			currentActivityId = data.activityId;
-			currentRunId = data.id;
+		dataType : "json"
+	}).then(
+		function(data) {
+			// track the current activity info
+			currentActivityId = data.id;
 			
-			$('#successMsg').html('The activity was created and the activity run started.');
+			$('#successMsg').html('The activity was created.');
+			$("#successContainer").show();
+			
+			return data;
+		},
+		function(data) {
+			$('#createBtn').prop('disabled', false);
+			$('#logBtn').prop('disabled', true);
+			
+			$("#loadingImg").hide();
+			displayErrorMessage("Error creating the activity:<br/>" + data.responseText);
+		});
+};
+
+/**
+ * runActivity: 
+ * The servlet runs the activity by calling the POST /activities/<activityId>/activityRuns method. 
+ * The servlet responds to the client with the payload response.
+ * It then starts a results-polling function, or displays the error message, if an error occurred.
+ */
+function runActivity(activity) {
+	return $.ajax({
+		url : "refinery/activities/" + activity.id + "/activityRuns", 
+		type : "POST",
+		headers : {
+			'Accept' : 'application/json'
+		},
+		dataType : "json"
+	}).then(
+		function(data) {
+			// track the current run info
+			currentRunId = data.id;
+			$('#successMsg').html('The run was started.');
 			$("#successContainer").show();
 			$('#logBtn').prop('disabled', false);
 			
 			// poll for results every 30 seconds
 			pollForResults(data.activityId, data.id, 30000);
 		},
-		"error" : function(data) {
+		function(data) {
 			$('#createBtn').prop('disabled', false);
 			$('#logBtn').prop('disabled', true);
 			
 			$("#loadingImg").hide();
-			displayErrorMessage("Error creating and running the activity:<br/>" + JSON.stringify(data, null, true));  
-		} 
-	});
-};
+			displayErrorMessage("Error running the activity:<br/>" + data.responseText);
+			
+			return data;
+		});
+}
 
 /**
- * Poll for activity run results in regular time intervals
+ * pollForResults: 
+ * This function starts a poll for activity-run results at regular time intervals.
  * @param {string} activityId
  * @param {string} runId
  * @param {number} pollingInterval
@@ -172,7 +426,9 @@ function pollForResults(activityId, runId, pollingInterval) {
 };
 
 /**
- * Reset the form and other state
+ * reset: 
+ * This function resets the form and other states information to the initial state. The form is 
+ * not cleared of its data, so the user can re-use the same input data for additional runs. 
  */
 function reset() {
 	//clear any existing status polling timer
@@ -185,6 +441,8 @@ function reset() {
 	$("#successContainer").hide();
 	$("#failureContainer").hide();
 	$("#resultContainer").hide();
+	$('#InfoContainer').hide(); 
+	$('#infoMsgContainer').hide();
 	$('#resultText').val("");
 	
 	$('#createBtn').prop('disabled', false);
@@ -195,29 +453,29 @@ function reset() {
 }
 
 /**
- * Call REST service to get most current run status. The servlet will then invoke
- * the IBM DataWorks activities/<activityId>/activityRuns/<runId> api and respond
- * back to the UI with the latest ActivityRun response payload, which includes
- * status information.
+ * getRunStatus: 
+ * This code calls a REST service to get the status of the activity run 
+ * by invoking the IBM DataWorks activities/<activityId>/activityRuns/<runId> method,
+ * and responds to the UI with the latest ActivityRun response payload, which includes status information.
  * @param {string} activityId
  * @param {string} runId
  * @param {function} stopPollingCallback
  */
 function getRunStatus (activityId, runId, stopPollingCallback) {
 	$.ajax({
-		"url" : "refinery/activities/" + activityId + "/activityRuns/" + runId,
-		"headers" : {
+		url : "refinery/activities/" + activityId + "/activityRuns/" + runId,
+		headers : {
 			'Accept' : 'application/json',
 			'Content-Type' : 'application/json'
 		},
-		"success" : function(data) { 
-			populateResults(data);
+		success : function(data) { 
+			populateResults(data, activityId, runId);
 			if  (data.outputDocument.common.status.indexOf("FINISHED") != -1) {
 				$("#loadingImg").hide();
 				stopPollingCallback();
 			};
 		},
-		"error" : function(data) {
+		error : function(data) {
 			$("#loadingImg").hide();
 			displayErrorMessage("The status of the activity run was not retrieved:<br/>" + JSON.stringify(data, null, true)); 
 			stopPollingCallback();
@@ -226,13 +484,18 @@ function getRunStatus (activityId, runId, stopPollingCallback) {
 };
 
 /**
- * Populate result table on website
- * @param {object} classificationResult
+ * populateResults:
+ * This function populates the result panel on the website with either success results or error diagnostic information
+ * @param {object} runResult
+ * @param {string} activityId
+ * @param {string} runId
  */
-function populateResults(runResult) {
-	// empty result table
+function populateResults(runResult, activityId, runId) {
+	// Remove other panels
 	$('#failureContainer').hide();
 	$("#successContainer").hide();
+	$('#InfoContainer').hide(); 
+	$('#infoMsgContainer').hide();
 
 	if (runResult.outputDocument.common.status.indexOf("FINISHED") != -1) {
 		if (runResult.outputDocument.common.status.indexOf("ERROR") == -1) {
@@ -240,54 +503,88 @@ function populateResults(runResult) {
 			$('#successMsg').html('The data was loaded successfully. ' + runResult.outputDocument.rowsMoved + ' records were processed. For more information, click View Log.');
 			$("#successContainer").show();
 		} else {
-			// display success message
-			$('#errorMsg').html('The data was not loaded because the following error occurred: ' + runResult.outputDocument.common.status + '. For more information, click View Log.');	
+			// display error message with diagnostic information
+			$('#errorMsg').html('The data was not loaded because the following error occurred:<br/>' +
+								' <br/>' +
+					            '<b>Execution ID:</b> ' + runResult.outputDocument.common.executionId +  '<br/>' +
+					            '<b>runBy:</b> ' + runResult.outputDocument.common.runBy +  '<br/>' +
+								' <br/>' +
+					            '<b>ActivityID:</b> ' + activityId +  '<br/>' +
+					            '<b>RunID:</b> ' + runId +  '<br/>' +
+								' <br/>' +
+					            '<b>Status:</b> ' + runResult.outputDocument.common.status + '<br/>' +
+					            'For more information, click View Log.');	
 			$("#failureContainer").show();
 		}
 	}
 };
 
 /**
- * Display error message on website
- * @param {string} message
+ * displayErrorMessage:
+ * This function displays the provided error message on the website.
+ * @param {string} message to display
  */
 function displayErrorMessage(message) {
-	// hide progress indicator
+	// hide progress indicator and other results containers
 	$("#loadingImg").hide();
-	// display error message
+	$("#resultContainer").hide();
+	$("#successContainer").hide();
+	$('#InfoContainer').hide(); 
+	$('#infoMsgContainer').hide();
+	
+	// display the error message
 	if (message) {
 		$('#errorMsg').html(message);
 	} else {
 		$('#errorMsg').html('The data loading process was not completed.');			
 	}
-	$("#resultContainer").hide();
-	$("#successConainer").hide();
 	$("#failureContainer").show();				
 };
 
 
 /**
- * Display detailed log text
+ * viewLog:
+ * This code calls a REST service to get the detailed log text of the activity run 
+ * by invoking the IBM DataWorks activities/<activityId>/activityRuns/<runId>/logs method.
+ * If successful, it provides the response payload in the results panel, or displays the error returned. 
+ * @param {string} activityId
+ * @param {string} runId
  */
 function viewLog(activityId, runId){
 
 	$('#resultText').val('Loading...');
 	$("#successContainer").hide();
-	$("#failureContainer").hide();	
+	$("#failureContainer").hide();
+	$('#InfoContainer').hide(); 
+	$('#infoMsgContainer').hide();
 	$("#resultContainer").show();
 	$.ajax({
-		"url" : "refinery/activities/" + (activityId || currentActivityId) + 
+		url : "refinery/activities/" + (activityId || currentActivityId) + 
 			"/activityRuns/" + (runId || currentRunId) + "/logs",
-		"headers" : {
+		headers : {
 			'Accept' : 'application/json',
 			'Content-Type' : 'application/json'
 		},
-		"success" : function(data) { 
+		success : function(data) { 
 			$("#resultText").val(JSON.stringify(data, null, " "));
 		},
-		"error" : function(data) {
+		error : function(data) {
 			displayErrorMessage("The log for the activity run could not be retrieved:<br/>" + JSON.stringify(data, null, true)); 
 		}
 	});
 	
+};
+
+/**
+ * viewPayload:
+ * This function removes from view any results panels and displays instructions on how to view the payload information
+ */
+function viewPayload(){
+
+	$("#successContainer").hide();
+	$("#failureContainer").hide();	
+	$("#resultContainer").hide();	
+	$('#infoMsgContainer').hide();
+	$('#InfoContainer').show(); 
+
 };

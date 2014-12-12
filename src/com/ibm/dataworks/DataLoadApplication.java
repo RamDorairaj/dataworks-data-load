@@ -19,11 +19,13 @@ package com.ibm.dataworks;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
 /**
- * Sample application showing the usage of the data refinery REST API.
+ * Sample application showing the usage of the data load REST API.
  */
+@ApplicationPath("refinery")
 public class DataLoadApplication extends Application 
 {
     /**
