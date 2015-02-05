@@ -256,6 +256,37 @@ function createAndRunActivity() {
             encoding : "UTF-8"
         };
 		
+		
+	// setup the request for target	Cloudant
+	} else if (trgConnType == "CLOUDANT") {	
+		var targetHost     	= $("#targetCLDHostInput").val();
+		var targetPort     	= $("#targetCLDPortInput").val();
+		var targetDatabase 	= $("#targetCLDDatabaseInput").val();
+		var targetSSL   	= $("#targetCLDSSLInput").is(":checked");
+		var targetUsername 	= $("#targetCLDUsernameInput").val();
+		var targetPassword 	= $("#targetCLDPasswordInput").val();
+		targetTable			= $("#targetCLDTableInput").val();
+		
+		var isSSL = false;
+		if(targetSSL)
+			isSSL = true;
+		
+		targetConnection = 	{
+	            database : targetDatabase,
+	            createDatabase : true,
+	            ssl : isSSL,
+	            user : targetUsername,
+	            password : targetPassword,
+	            schema : targetSchema,
+	            host : targetHost,
+	            port: parseInt(targetPort),
+	            type : "cloudant"
+	        };
+		
+		trgOptions = {
+						batchSize: 2000
+					};		
+		
 
 	// setup the request for targets DashDB or SQLDB
 	} else {

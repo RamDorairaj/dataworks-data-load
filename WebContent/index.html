@@ -184,7 +184,8 @@
 					<select	name="targetSystemSelect" id="targetSystemSelect">
 						<option value="SQLDB" selected>SQL Database</option>
 						<option value="DASHDB">dashDB</option> 			
-						<option value="HADOOP">Analytics for Hadoop</option>			
+						<option value="HADOOP">Analytics for Hadoop</option>
+						<option value="CLOUDANT">Cloudant Database</option>				
 					</select><br> 
 					
 					<!--  TARGET: Show fields for SQLDB, DashDB -->
@@ -233,6 +234,31 @@
 				   	   <input type="text" name="targetHadoopTableInput" id="targetHadoopTableInput" value=""><br>						   
 				   
 				   </div>
+				   
+					<!--  TARGET: Show fields for CLOUDANT DB -->
+				    <div id="TRG_CLOUDANTDB_Fields">
+						<label for="targetCLDHostInput">Host:</label> 
+						<input type="text"	name="targetCLDHostInput" id="targetCLDHostInput" value=""><br> 
+						
+						<label for="targetCLDPortInput">Port:</label> 
+						<input type="text" name="targetCLDPortInput" id="targetCLDPortInput" value=""><br>
+						 
+						<label for="targetCLDDatabaseInput">Database:</label> 
+						<input type="text" name="targetCLDDatabaseInput" id="targetCLDDatabaseInput" value=""><br>
+	
+						<label for="targetCLDSSLInput">SSL:</label> 
+						<input type="checkbox" name="targetCLDSSLInput" id="targetCLDSSLInput" value=""><br> 
+						
+						<label for="targetCLDUsernameInput">User name:</label> 
+						<input type="text"	name="targetCLDUsernameInput" id="targetCLDUsernameInput" value=""><br>
+	
+						<label for="targetCLDPasswordInput">Password:</label> 
+						<input type="password" name="targetCLDPasswordInput" id="targetCLDPasswordInput" value=""><br>
+						
+				   		<label for="targetCLDTableInput">Table:</label> 
+				   		<input type="text" name="targetCLDTableInput" id="targetCLDTableInput" value=""><br>							
+
+					</div>				   
 					
 				</form>
 			</div>
@@ -362,7 +388,13 @@
 							msgToShow = msgToShow + 
 										'<p><b>TARGET:</b> For the selected target, if the target table does not exist, the table is created. If the target table exists,</br>' +
 										'data is appended to the existing table.';
-							} 
+							}
+						
+						if( trg == "CLOUDANT") {
+							msgToShow = msgToShow + 
+										'<p><b>TARGET:</b> For the selected target, if the target database does not exist, the database is created. If the target database exists,</br>' +
+										'it is updated.';
+							}
 						
 						if( msgToShow.trim() ){
 							$('#InfoMsg').html( msgToShow );
@@ -380,7 +412,7 @@
             		$("#ORACLEODBC_Fields").hide();
             		$("#HADOOP_Fields").hide();
 					$("#OBJECTSTORAGE_Fields").hide();            		
-            		$("#AMAZONS3_Fields").hide();            		
+            		$("#AMAZONS3_Fields").hide();
             		
 		            var src = $(this).val();
 	                if (src == "SQLDB" || src == "DASHDB" ) {
@@ -409,6 +441,7 @@
             $("#targetSystemSelect").change(function() {
                     $("#TRG_SQL_DASHDB_Fields").hide();
             		$("#TRG_HADOOP_Fields").hide();
+            		$("#TRG_CLOUDANTDB_Fields").hide();    
             		
 		            var trg = $(this).val();
 	                if (trg == "SQLDB" || trg == "DASHDB") {
@@ -416,7 +449,9 @@
 		            
 	                } else if( trg == "HADOOP") {
 						$("#TRG_HADOOP_Fields").show();
-	                
+						
+	                } else if( trg == "CLOUDANT") {
+						$("#TRG_CLOUDANTDB_Fields").show();
 	                } 
 	          		var src = $("#sourceSystemSelect").val();
 	          		verifySupport(src, trg);
